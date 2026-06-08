@@ -355,7 +355,7 @@
     <h1>LOL 自定义分组工具</h1>
     <div class="subtitle">
       支持 <strong>普通随机</strong> 和 <strong>实力随机</strong>。
-      选手名单从 <code>data/players.csv</code> 读取，历史评分从 <code>data/scores.csv</code> 读取。
+      选手名单和评分自动从仓库读取，赛后导出 CSV 上传覆盖即可保存。
     </div>
 
     <div class="modeSwitch">
@@ -366,13 +366,11 @@
     <div class="grid">
       <div>
         <div class="panel">
-          <h2>选手 Source</h2>
-          <div class="small" id="sourceStatus">正在读取 data/players.csv 与 data/scores.csv...</div>
+          <h2>选手管理</h2>
 
           <div class="buttons">
             <button class="ghost" onclick="selectAllPlayers()">全选</button>
             <button class="ghost" onclick="clearSelectedPlayers()">取消全选</button>
-            <button class="ghost" onclick="reloadCsvData()">重新读取 CSV</button>
             <button class="success" onclick="exportPlayersCsv()">导出 players.csv</button>
           </div>
 
@@ -391,18 +389,15 @@
             </table>
           </div>
 
-          <label>临时添加选手，每行一个；也支持 “ID,昵称”</label>
+          <label>临时添加选手，每行一个昵称（ID 自动递增）</label>
           <textarea id="newPlayersInput" placeholder="例如：
-新玩家1
-新玩家2,朋友A"></textarea>
+张三
+李四
+王五"></textarea>
 
           <div class="buttons">
-            <button class="ghost" onclick="addPlayersFromTextarea()">加入 Source</button>
+            <button class="ghost" onclick="addPlayersFromTextarea()">加入选手</button>
             <button class="danger" onclick="removeUncheckedPlayers()">删除未选中选手</button>
-          </div>
-
-          <div class="hint">
-            Source 是当前页面内的选手池。想长期保存，请点击“导出 players.csv”，然后手动覆盖仓库中的 <code>data/players.csv</code>。
           </div>
         </div>
 
@@ -411,10 +406,6 @@
 
           <div class="strengthOnly">
             <div class="inlineSettings">
-              <div>
-                <label>新玩家默认分数</label>
-                <input id="defaultScore" type="number" value="50" step="1" />
-              </div>
               <div>
                 <label>随机候选数量</label>
                 <input id="iterations" type="number" value="3000" min="100" step="100" />
@@ -435,7 +426,6 @@
 
           <div class="buttons">
             <button class="primary" onclick="makeTeams()">生成分组</button>
-            <button class="ghost" onclick="fillDemo()">填入示例</button>
             <button class="ghost" onclick="clearTeamsOnly()">清空分组</button>
             <button class="success" onclick="copyResult()">复制结果</button>
           </div>
@@ -491,14 +481,8 @@
           </div>
         </div>
 
-        <div class="statsPanel">
-          <h2>CSV 导入 / 历史评分</h2>
-
-          <label>手动导入 players.csv</label>
-          <input class="fileInput" type="file" accept=".csv,text/csv" onchange="importPlayersFile(event)" />
-
-          <label>手动导入 scores.csv</label>
-          <input class="fileInput" type="file" accept=".csv,text/csv" onchange="importScoresFile(event)" />
+        <div class="statsPanel strengthOnly">
+          <h2>历史评分</h2>
 
           <div class="buttons">
             <button class="ghost" onclick="renderStats()">刷新评分表</button>
@@ -512,9 +496,9 @@
             <tbody id="statsTable"></tbody>
           </table>
 
-             <div class="hint">
-             网页可以读取仓库 CSV，但不能安全地自动写回仓库。赛后请导出新的 <code>scores.csv</code>，手动上传覆盖仓库文件。每局得分基于排名自动计算（第1名5分，第2名4分，依次递减）。
-           </div>
+          <div class="hint">
+            每局得分基于排名自动计算（第1名5分，第2名4分，依次递减至0分）。未参赛选手默认平均分2.5分。
+          </div>
         </div>
       </div>
     </div>
@@ -563,14 +547,6 @@
       document.getElementById("message").textContent = msg;
     }
 
-    function setSourceStatus(msg) {
-      document.getElementById("sourceStatus").textContent = msg;
-    }
-
-    async function reloadCsvData() {
-      await loadCsvData();
-    }
-
     async function loadCsvData() {
       let messages = [];
 
@@ -596,7 +572,6 @@
         messages.push("未读取到 data/scores.csv，将使用默认分数");
       }
 
-      setSourceStatus(messages.join("；") + "。");
       renderPlayerTable();
       renderStats();
     }
@@ -739,10 +714,7 @@
     }
 
     function getDefaultScore() {
-      const el = document.getElementById("defaultScore");
-      if (!el) return 50;
-      const v = Number(el.value);
-      return Number.isFinite(v) ? v : 50;
+      return 2.5;
     }
 
     function getPlayerAverage(id) {
@@ -805,18 +777,17 @@
       const lines = text.split(/\n+/).map(x => x.trim()).filter(Boolean);
 
       let added = 0;
+      let nextId = 1;
+      const existingNums = players
+        .map(p => Number(p.player_id))
+        .filter(n => Number.isFinite(n));
+      if (existingNums.length > 0) nextId = Math.max(...existingNums) + 1;
+
       lines.forEach(line => {
-        let id = line;
-        let nickname = "";
+        const nickname = line;
+        if (!nickname) return;
 
-        if (line.includes(",")) {
-          const parsed = parseCSV(line)[0] || [];
-          id = (parsed[0] || "").trim();
-          nickname = (parsed[1] || "").trim();
-        }
-
-        if (!id) return;
-
+        const id = String(nextId++);
         const existed = players.find(p => p.player_id === id);
         if (existed) {
           if (nickname) existed.nickname = nickname;
@@ -839,7 +810,7 @@
       const removed = before - players.length;
       renderPlayerTable();
       renderStats();
-      showMessage(`已从当前 Source 删除 ${removed} 名未选中选手。`);
+      showMessage(`已删除 ${removed} 名未选中选手。`);
     }
 
     function getSelectedPlayerIds() {
@@ -1140,7 +1111,8 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
       thead.innerHTML = "";
       tbody.innerHTML = "";
 
-      const maxR = getMaxRounds();
+      const maxR = Math.min(getMaxRounds(), 5);
+      const startRound = Math.max(0, getMaxRounds() - maxR);
       const ids = Array.from(new Set([
         ...players.map(p => p.player_id),
         ...Object.keys(scores)
@@ -1148,7 +1120,7 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
 
       let headerHtml = "<th>选手ID</th><th>昵称</th><th>总分</th><th>平均分</th>";
       for (let i = 0; i < maxR; i++) {
-        headerHtml += `<th>第${i + 1}局</th>`;
+        headerHtml += `<th>第${startRound + i + 1}局</th>`;
       }
       thead.innerHTML = headerHtml;
 
@@ -1172,7 +1144,7 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
         .forEach(r => {
           const tr = document.createElement("tr");
           let html = `<td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.nickname || "")}</td><td>${r.total.toFixed(1)}</td><td>${r.avg.toFixed(1)}</td>`;
-          for (let i = 0; i < maxR; i++) {
+          for (let i = startRound; i < startRound + maxR; i++) {
             const val = (r.rounds[i] != null) ? r.rounds[i] : "";
             html += `<td>${val}</td>`;
           }
@@ -1298,41 +1270,6 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
       renderPlayerTable();
       renderStats();
       showMessage("当前页面内的历史评分已清空。");
-    }
-
-    function fillDemo() {
-      players = [
-        { player_id: "top01", nickname: "上单哥", enabled: true },
-        { player_id: "jug01", nickname: "打野哥", enabled: true },
-        { player_id: "mid01", nickname: "中单哥", enabled: true },
-        { player_id: "adc01", nickname: "AD哥", enabled: true },
-        { player_id: "sup01", nickname: "辅助哥", enabled: true },
-        { player_id: "fill01", nickname: "补位哥", enabled: true },
-        { player_id: "p07", nickname: "玩家7", enabled: true },
-        { player_id: "p08", nickname: "玩家8", enabled: true },
-        { player_id: "p09", nickname: "玩家9", enabled: true },
-        { player_id: "p10", nickname: "玩家10", enabled: true }
-      ];
-
-      scores = {
-        "top01": { games: 5, total: 21, rounds: [5, 4, 3, 5, 4] },
-        "jug01": { games: 5, total: 20, rounds: [3, 5, 4, 3, 5] },
-        "mid01": { games: 5, total: 20, rounds: [5, 3, 5, 4, 3] },
-        "adc01": { games: 5, total: 21, rounds: [4, 5, 3, 4, 5] },
-        "sup01": { games: 5, total: 17, rounds: [3, 4, 2, 5, 3] },
-        "fill01": { games: 4, total: 14, rounds: [4, 3, 5, 2] },
-        "p07": { games: 4, total: 16, rounds: [5, 4, 3, 4] },
-        "p08": { games: 4, total: 15, rounds: [3, 5, 2, 5] },
-        "p09": { games: 4, total: 14, rounds: [4, 2, 5, 3] },
-        "p10": { games: 4, total: 16, rounds: [5, 3, 4, 4] }
-      };
-
-      roundCount = getMaxRounds();
-      selectedIds = new Set(players.map(p => p.player_id));
-
-      renderPlayerTable();
-      renderStats();
-      showMessage("已填入示例选手和示例历史评分。");
     }
 
     function clearTeamsOnly() {
