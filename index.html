@@ -34,6 +34,20 @@
       margin: 0 auto;
     }
 
+    .hero-title {
+      text-align: center;
+      font-size: 52px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #f59e0b, #ef4444, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 2px;
+      letter-spacing: 6px;
+      line-height: 1.2;
+      text-shadow: 0 0 40px rgba(239,68,68,0.3);
+    }
+
     h1 {
       text-align: center;
       margin: 0 0 10px;
@@ -328,6 +342,7 @@
 
     @media (max-width: 720px) {
       .teams, .inlineSettings, .scoreRow { grid-template-columns: 1fr; }
+      .hero-title { font-size: 32px; letter-spacing: 3px; }
       h1 { font-size: 24px; }
       table { font-size: 12px; }
       th, td { padding: 7px 4px; }
@@ -336,6 +351,7 @@
 </head>
 <body class="random-mode">
   <div class="container">
+    <div class="hero-title">比赛第一，友谊第二，甘</div>
     <h1>LOL 自定义分组工具</h1>
     <div class="subtitle">
       支持 <strong>普通随机</strong> 和 <strong>实力随机</strong>。
@@ -456,22 +472,22 @@
 
       <div>
         <div class="panel strengthOnly">
-          <h2>赛后录入分数</h2>
+          <h2>赛后录入排名</h2>
           <div class="small">
-            先使用“实力随机”生成分组。游戏结束后，录入每个玩家本局分数，然后点击保存。
+            先使用"实力随机"生成分组。游戏结束后，录入每个玩家本局排名（第1名=5分，第2名=4分，第3名=3分，第4名=2分，第5名=1分，之后0分），然后点击保存。
           </div>
 
           <div id="scoreRows" class="scoreRows"></div>
 
           <div class="buttons">
-            <button class="success" onclick="saveMatchScores()">保存本局分数</button>
+            <button class="success" onclick="saveMatchScores()">保存本局排名</button>
             <button class="ghost" onclick="fillRandomScores()">模拟填分</button>
             <button class="success" onclick="exportScoresCsv()">导出 scores.csv</button>
             <button class="ghost" onclick="exportLastMatchCsv()">导出本局明细 CSV</button>
           </div>
 
           <div class="hint">
-            评分汇总使用 <code>scores.csv</code>：<code>player_id,games,total</code>。本局明细可另存为 match_history.csv，但分组只需要 scores.csv。
+             评分汇总使用 <code>scores.csv</code>：<code>player_id,games,total,round0,round1,...</code>。本局明细可另存为 match_history.csv，但分组只需要 scores.csv。
           </div>
         </div>
 
@@ -490,21 +506,15 @@
           </div>
 
           <table>
-            <thead>
-              <tr>
-                <th>选手ID</th>
-                <th>昵称</th>
-                <th>局数</th>
-                <th>平均分</th>
-                <th>总分</th>
-              </tr>
+            <thead id="statsHead">
+              <tr id="statsHeaderRow"></tr>
             </thead>
             <tbody id="statsTable"></tbody>
           </table>
 
-          <div class="hint">
-            网页可以读取仓库 CSV，但不能安全地自动写回仓库。赛后请导出新的 <code>scores.csv</code>，手动上传覆盖仓库文件。
-          </div>
+             <div class="hint">
+             网页可以读取仓库 CSV，但不能安全地自动写回仓库。赛后请导出新的 <code>scores.csv</code>，手动上传覆盖仓库文件。每局得分基于排名自动计算（第1名5分，第2名4分，依次递减）。
+           </div>
         </div>
       </div>
     </div>
@@ -523,6 +533,15 @@
     let lastRed = [];
     let lastResult = "";
     let lastMatchRows = [];
+    let roundCount = 0;
+
+    function getMaxRounds() {
+      let maxR = 0;
+      Object.values(scores).forEach(s => {
+        if (s.rounds) maxR = Math.max(maxR, s.rounds.length);
+      });
+      return maxR;
+    }
 
     function setMode(mode) {
       currentMode = mode;
@@ -569,9 +588,11 @@
       try {
         const scoreText = await fetchText(SCORE_CSV_URL);
         scores = parseScoresCsv(scoreText);
-        messages.push(`已读取 ${Object.keys(scores).length} 条评分`);
+        roundCount = getMaxRounds();
+        messages.push(`已读取 ${Object.keys(scores).length} 条评分，共 ${roundCount} 局`);
       } catch (e) {
         scores = {};
+        roundCount = 0;
         messages.push("未读取到 data/scores.csv，将使用默认分数");
       }
 
@@ -655,19 +676,29 @@
     }
 
     function parseScoresCsv(text) {
-      const objects = rowsToObjects(parseCSV(text));
+      const rows = parseCSV(text);
+      if (!rows.length) return {};
+      const headers = rows[0].map(h => h.trim());
+      const roundHeaders = headers.filter(h => /^round\d+$/.test(h));
       const result = {};
 
-      objects.forEach(obj => {
+      rows.slice(1).filter(row => row.some(x => String(x).trim() !== "")).forEach(row => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = (row[i] ?? "").trim());
         const id = (obj.player_id || obj.id || obj.name || "").trim();
         if (!id) return;
 
         const games = Number(obj.games || 0);
         const total = Number(obj.total || 0);
+        const rounds = roundHeaders.map(h => {
+          const v = Number(obj[h]);
+          return Number.isFinite(v) ? v : null;
+        }).filter(v => v !== null);
 
         result[id] = {
           games: Number.isFinite(games) ? games : 0,
-          total: Number.isFinite(total) ? total : 0
+          total: Number.isFinite(total) ? total : 0,
+          rounds
         };
       });
 
@@ -1020,7 +1051,7 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
         row.className = "scoreRow";
         row.innerHTML = `
           <span>${escapeHtml(item.team === "blue" ? "蓝队" : "红队")}：${escapeHtml(getPlayerName(item.id))}</span>
-          <input type="number" step="0.1" placeholder="本局分数" data-player="${escapeAttr(item.id)}" data-team="${item.team}">
+          <input type="number" step="1" min="1" placeholder="名次(1=5分)" data-player="${escapeAttr(item.id)}" data-team="${item.team}">
         `;
         box.appendChild(row);
       });
@@ -1028,13 +1059,13 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
 
     function saveMatchScores() {
       if (currentMode !== "strength") {
-        showMessage("只有实力随机模式需要保存赛后分数。");
+        showMessage("只有实力随机模式需要保存赛后排名。");
         return;
       }
 
       const inputs = Array.from(document.querySelectorAll("#scoreRows input"));
       if (inputs.length === 0) {
-        showMessage("请先生成分组，再录入本局分数。");
+        showMessage("请先生成分组，再录入本局排名。");
         return;
       }
 
@@ -1042,20 +1073,28 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
       const matchId = "match_" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
       let saved = 0;
       lastMatchRows = [];
+      const roundIdx = roundCount;
 
       for (const input of inputs) {
         const id = input.getAttribute("data-player");
         const team = input.getAttribute("data-team");
-        const score = Number(input.value);
+        const rank = Number(input.value);
 
-        if (!Number.isFinite(score)) continue;
+        if (!Number.isFinite(rank) || rank < 1) continue;
+
+        const points = Math.max(0, 6 - rank);
 
         if (!scores[id]) {
-          scores[id] = { games: 0, total: 0 };
+          scores[id] = { games: 0, total: 0, rounds: [] };
         }
+        if (!scores[id].rounds) scores[id].rounds = [];
 
+        while (scores[id].rounds.length < roundIdx) {
+          scores[id].rounds.push(null);
+        }
+        scores[id].rounds.push(points);
         scores[id].games += 1;
-        scores[id].total += score;
+        scores[id].total += points;
         saved++;
 
         lastMatchRows.push({
@@ -1064,16 +1103,18 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
           player_id: id,
           nickname: players.find(p => p.player_id === id)?.nickname || "",
           team,
-          score
+          rank,
+          points
         });
       }
 
       if (saved === 0) {
-        showMessage("没有检测到有效分数。");
+        showMessage("没有检测到有效排名。");
         return;
       }
 
-      showMessage(`已在当前页面内保存 ${saved} 名玩家的本局分数。请导出 scores.csv 后上传到仓库保存。`);
+      roundCount = getMaxRounds();
+      showMessage(`已在当前页面内保存 ${saved} 名玩家的本局排名（第1名=5分制）。请导出 scores.csv 后上传到仓库保存。`);
 
       renderPlayerTable();
       renderStats();
@@ -1094,46 +1135,62 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
     }
 
     function renderStats() {
+      const thead = document.getElementById("statsHeaderRow");
       const tbody = document.getElementById("statsTable");
+      thead.innerHTML = "";
       tbody.innerHTML = "";
 
+      const maxR = getMaxRounds();
       const ids = Array.from(new Set([
         ...players.map(p => p.player_id),
         ...Object.keys(scores)
       ]));
 
+      let headerHtml = "<th>选手ID</th><th>昵称</th><th>总分</th><th>平均分</th>";
+      for (let i = 0; i < maxR; i++) {
+        headerHtml += `<th>第${i + 1}局</th>`;
+      }
+      thead.innerHTML = headerHtml;
+
       if (ids.length === 0) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="5" class="small">暂无历史评分。</td>`;
+        tr.innerHTML = `<td colspan="${4 + maxR}" class="small">暂无历史评分。</td>`;
         tbody.appendChild(tr);
         return;
       }
 
+      const colSpan = 4 + maxR;
+
       ids
         .map(id => {
           const p = players.find(x => x.player_id === id) || { player_id: id, nickname: "" };
-          const s = scores[id] || { games: 0, total: 0 };
+          const s = scores[id] || { games: 0, total: 0, rounds: [] };
           const avg = s.games ? s.total / s.games : getDefaultScore();
-          return { id, nickname: p.nickname, games: s.games || 0, total: s.total || 0, avg };
+          return { id, nickname: p.nickname, games: s.games || 0, total: s.total || 0, avg, rounds: s.rounds || [] };
         })
         .sort((a, b) => b.avg - a.avg)
         .forEach(r => {
           const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${escapeHtml(r.id)}</td>
-            <td>${escapeHtml(r.nickname || "")}</td>
-            <td>${r.games}</td>
-            <td>${r.avg.toFixed(1)}</td>
-            <td>${r.total.toFixed(1)}</td>
-          `;
+          let html = `<td>${escapeHtml(r.id)}</td><td>${escapeHtml(r.nickname || "")}</td><td>${r.total.toFixed(1)}</td><td>${r.avg.toFixed(1)}</td>`;
+          for (let i = 0; i < maxR; i++) {
+            const val = (r.rounds[i] != null) ? r.rounds[i] : "";
+            html += `<td>${val}</td>`;
+          }
+          tr.innerHTML = html;
           tbody.appendChild(tr);
         });
     }
 
     function fillRandomScores() {
       const inputs = Array.from(document.querySelectorAll("#scoreRows input"));
-      inputs.forEach(input => {
-        input.value = (Math.random() * 40 + 60).toFixed(1);
+      const count = inputs.length;
+      const ranks = Array.from({ length: count }, (_, i) => i + 1);
+      for (let i = ranks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ranks[i], ranks[j]] = [ranks[j], ranks[i]];
+      }
+      inputs.forEach((input, idx) => {
+        input.value = ranks[idx];
       });
     }
 
@@ -1169,24 +1226,37 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
         ...Object.keys(scores)
       ]));
 
-      const rows = ids.map(id => ({
-        player_id: id,
-        games: scores[id]?.games || 0,
-        total: Number(scores[id]?.total || 0).toFixed(1)
-      }));
+      const maxR = getMaxRounds();
+      const headers = ["player_id", "games", "total"];
+      for (let i = 0; i < maxR; i++) {
+        headers.push(`round${i}`);
+      }
 
-      const csv = toCSV(["player_id", "games", "total"], rows);
+      const rows = ids.map(id => {
+        const s = scores[id] || { games: 0, total: 0, rounds: [] };
+        const row = {
+          player_id: id,
+          games: s.games || 0,
+          total: Number(s.total || 0).toFixed(1)
+        };
+        for (let i = 0; i < maxR; i++) {
+          row[`round${i}`] = (s.rounds && s.rounds[i] != null) ? s.rounds[i] : "";
+        }
+        return row;
+      });
+
+      const csv = toCSV(headers, rows);
       downloadText("scores.csv", csv);
       showMessage("已导出 scores.csv。请上传覆盖仓库 data/scores.csv。");
     }
 
     function exportLastMatchCsv() {
       if (!lastMatchRows.length) {
-        showMessage("暂无本局明细。请先保存本局分数。");
+        showMessage("暂无本局明细。请先保存本局排名。");
         return;
       }
 
-      const csv = toCSV(["match_id", "date", "player_id", "nickname", "team", "score"], lastMatchRows);
+      const csv = toCSV(["match_id", "date", "player_id", "nickname", "team", "rank", "points"], lastMatchRows);
       downloadText("match_history_latest.csv", csv);
       showMessage("已导出本局明细 CSV。");
     }
@@ -1213,9 +1283,10 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
       const reader = new FileReader();
       reader.onload = () => {
         scores = parseScoresCsv(String(reader.result || ""));
+        roundCount = getMaxRounds();
         renderPlayerTable();
         renderStats();
-        showMessage(`已导入 ${Object.keys(scores).length} 条评分。`);
+        showMessage(`已导入 ${Object.keys(scores).length} 条评分，共 ${roundCount} 局。`);
       };
       reader.readAsText(file, "utf-8");
     }
@@ -1223,6 +1294,7 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
     function resetScores() {
       if (!confirm("确定清空当前页面内的历史评分吗？这不会自动修改仓库文件。")) return;
       scores = {};
+      roundCount = 0;
       renderPlayerTable();
       renderStats();
       showMessage("当前页面内的历史评分已清空。");
@@ -1243,18 +1315,19 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
       ];
 
       scores = {
-        "top01": { games: 5, total: 420 },
-        "jug01": { games: 5, total: 390 },
-        "mid01": { games: 5, total: 455 },
-        "adc01": { games: 5, total: 410 },
-        "sup01": { games: 5, total: 365 },
-        "fill01": { games: 4, total: 260 },
-        "p07": { games: 4, total: 300 },
-        "p08": { games: 4, total: 350 },
-        "p09": { games: 4, total: 280 },
-        "p10": { games: 4, total: 330 }
+        "top01": { games: 5, total: 21, rounds: [5, 4, 3, 5, 4] },
+        "jug01": { games: 5, total: 20, rounds: [3, 5, 4, 3, 5] },
+        "mid01": { games: 5, total: 20, rounds: [5, 3, 5, 4, 3] },
+        "adc01": { games: 5, total: 21, rounds: [4, 5, 3, 4, 5] },
+        "sup01": { games: 5, total: 17, rounds: [3, 4, 2, 5, 3] },
+        "fill01": { games: 4, total: 14, rounds: [4, 3, 5, 2] },
+        "p07": { games: 4, total: 16, rounds: [5, 4, 3, 4] },
+        "p08": { games: 4, total: 15, rounds: [3, 5, 2, 5] },
+        "p09": { games: 4, total: 14, rounds: [4, 2, 5, 3] },
+        "p10": { games: 4, total: 16, rounds: [5, 3, 4, 4] }
       };
 
+      roundCount = getMaxRounds();
       selectedIds = new Set(players.map(p => p.player_id));
 
       renderPlayerTable();
