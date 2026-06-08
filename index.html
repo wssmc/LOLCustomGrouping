@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LOL 自定义分组工具 CSV版</title>
+  <style>
+    :root {
+      --bg: #080d1c;
+      --card: #151b2f;
+      --card2: #10182c;
+      --text: #eef3ff;
+      --muted: #aab4d4;
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --border: rgba(255,255,255,0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top, #21305b 0%, var(--bg) 58%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px 16px;
+    }
+
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 0 0 10px;
+      font-size: 30px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+
+    .modeSwitch {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 0 auto 20px;
+    }
+
+    .modeBtn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 12px 24px;
+      font-size: 16px;
+      color: var(--text);
+      cursor: pointer;
+      background: rgba(255,255,255,0.08);
+      transition: all .15s ease;
+    }
+
+    .modeBtn.active {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      border-color: transparent;
+      box-shadow: 0 10px 28px rgba(37,99,235,0.28);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel, .team, .statsPanel {
+      background: rgba(21, 27, 47, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 16px 45px rgba(0,0,0,0.28);
+      margin-bottom: 18px;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0e1426;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    textarea:focus, input:focus, select:focus {
+      border-color: rgba(59,130,246,0.75);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      margin: 10px 0 6px;
+      font-size: 14px;
+    }
+
+    .inlineSettings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-size: 14px;
+      color: white;
+      cursor: pointer;
+      background: #334155;
+      transition: transform .1s ease, opacity .1s ease;
+    }
+
+    button:hover { transform: translateY(-1px); opacity: 0.95; }
+
+    .primary { background: linear-gradient(135deg, #2563eb, #7c3aed); }
+    .ghost { background: rgba(255,255,255,0.12); }
+    .success { background: linear-gradient(135deg, #16a34a, #22c55e); }
+    .danger { background: linear-gradient(135deg, #dc2626, #ef4444); }
+
+    .message {
+      text-align: center;
+      margin-top: 12px;
+      min-height: 24px;
+      color: var(--yellow);
+      font-weight: bold;
+      line-height: 1.6;
+    }
+
+    .summary {
+      text-align: center;
+      color: var(--muted);
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+
+    .teams {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .team {
+      background: rgba(16, 24, 44, 0.95);
+      min-height: 230px;
+    }
+
+    .team h2 {
+      margin: 0 0 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .blue h2 { color: #93c5fd; }
+    .red h2 { color: #fca5a5; }
+
+    ol { margin: 0; padding-left: 25px; }
+
+    li {
+      padding: 9px 0;
+      border-bottom: 1px dashed rgba(255,255,255,0.1);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    li:last-child { border-bottom: 0; }
+
+    .score {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .resultText {
+      width: 100%;
+      min-height: 130px;
+      white-space: pre-wrap;
+      background: #0e1426;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 12px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      margin-top: 10px;
+    }
+
+    .scoreRows {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .scoreRow {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 10px;
+      align-items: center;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 9px 10px;
+    }
+
+    .scoreRow span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: normal;
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .sourceBox {
+      max-height: 360px;
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      background: rgba(14,20,38,0.72);
+      margin-top: 10px;
+    }
+
+    .sourceBox table {
+      margin-top: 0;
+    }
+
+    .sourceBox input[type="checkbox"] {
+      width: auto;
+      transform: scale(1.05);
+    }
+
+    .strengthOnly {
+      display: none;
+    }
+
+    body.strength-mode .strengthOnly {
+      display: block;
+    }
+
+    body.random-mode .randomOnlyText {
+      display: inline;
+    }
+
+    body.strength-mode .randomOnlyText {
+      display: none;
+    }
+
+    body.random-mode .strengthOnlyText {
+      display: none;
+    }
+
+    body.strength-mode .strengthOnlyText {
+      display: inline;
+    }
+
+    .fileInput {
+      padding: 9px;
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .teams, .inlineSettings, .scoreRow { grid-template-columns: 1fr; }
+      h1 { font-size: 24px; }
+      table { font-size: 12px; }
+      th, td { padding: 7px 4px; }
+    }
+  </style>
+</head>
+<body class="random-mode">
+  <div class="container">
+    <h1>LOL 自定义分组工具</h1>
+    <div class="subtitle">
+      支持 <strong>普通随机</strong> 和 <strong>实力随机</strong>。
+      选手名单从 <code>data/players.csv</code> 读取，历史评分从 <code>data/scores.csv</code> 读取。
+    </div>
+
+    <div class="modeSwitch">
+      <button id="normalModeBtn" class="modeBtn active" onclick="setMode('random')">普通随机</button>
+      <button id="strengthModeBtn" class="modeBtn" onclick="setMode('strength')">实力随机</button>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h2>选手 Source</h2>
+          <div class="small" id="sourceStatus">正在读取 data/players.csv 与 data/scores.csv...</div>
+
+          <div class="buttons">
+            <button class="ghost" onclick="selectAllPlayers()">全选</button>
+            <button class="ghost" onclick="clearSelectedPlayers()">取消全选</button>
+            <button class="ghost" onclick="reloadCsvData()">重新读取 CSV</button>
+            <button class="success" onclick="exportPlayersCsv()">导出 players.csv</button>
+          </div>
+
+          <div class="sourceBox">
+            <table>
+              <thead>
+                <tr>
+                  <th>选择</th>
+                  <th>选手ID</th>
+                  <th>昵称</th>
+                  <th>局数</th>
+                  <th>平均分</th>
+                </tr>
+              </thead>
+              <tbody id="playerTable"></tbody>
+            </table>
+          </div>
+
+          <label>临时添加选手，每行一个；也支持 “ID,昵称”</label>
+          <textarea id="newPlayersInput" placeholder="例如：
+新玩家1
+新玩家2,朋友A"></textarea>
+
+          <div class="buttons">
+            <button class="ghost" onclick="addPlayersFromTextarea()">加入 Source</button>
+            <button class="danger" onclick="removeUncheckedPlayers()">删除未选中选手</button>
+          </div>
+
+          <div class="hint">
+            Source 是当前页面内的选手池。想长期保存，请点击“导出 players.csv”，然后手动覆盖仓库中的 <code>data/players.csv</code>。
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>分组设置</h2>
+
+          <div class="strengthOnly">
+            <div class="inlineSettings">
+              <div>
+                <label>新玩家默认分数</label>
+                <input id="defaultScore" type="number" value="50" step="1" />
+              </div>
+              <div>
+                <label>随机候选数量</label>
+                <input id="iterations" type="number" value="3000" min="100" step="100" />
+              </div>
+            </div>
+
+            <div class="inlineSettings">
+              <div>
+                <label>从前 N 个最均衡候选里随机选</label>
+                <input id="topK" type="number" value="20" min="1" step="1" />
+              </div>
+              <div>
+                <label>当前模式说明</label>
+                <input value="按历史平均分均衡，但仍随机抽签" readonly />
+              </div>
+            </div>
+          </div>
+
+          <div class="buttons">
+            <button class="primary" onclick="makeTeams()">生成分组</button>
+            <button class="ghost" onclick="fillDemo()">填入示例</button>
+            <button class="ghost" onclick="clearTeamsOnly()">清空分组</button>
+            <button class="success" onclick="copyResult()">复制结果</button>
+          </div>
+
+          <div id="message" class="message"></div>
+          <div id="summary" class="summary"></div>
+
+          <div class="hint">
+            <span class="randomOnlyText">
+              当前是普通随机：只随机打乱已选选手并平均分队。
+            </span>
+            <span class="strengthOnlyText">
+              当前是实力随机：根据历史平均分生成多个候选分组，从实力差较小的候选里随机选一个。
+            </span>
+          </div>
+        </div>
+
+        <div class="teams">
+          <div class="team blue">
+            <h2>蓝队 <span id="blueCount"></span></h2>
+            <ol id="blueTeam"></ol>
+            <div class="small" id="blueScore"></div>
+          </div>
+
+          <div class="team red">
+            <h2>红队 <span id="redCount"></span></h2>
+            <ol id="redTeam"></ol>
+            <div class="small" id="redScore"></div>
+          </div>
+        </div>
+
+        <div id="resultText" class="resultText"></div>
+      </div>
+
+      <div>
+        <div class="panel strengthOnly">
+          <h2>赛后录入分数</h2>
+          <div class="small">
+            先使用“实力随机”生成分组。游戏结束后，录入每个玩家本局分数，然后点击保存。
+          </div>
+
+          <div id="scoreRows" class="scoreRows"></div>
+
+          <div class="buttons">
+            <button class="success" onclick="saveMatchScores()">保存本局分数</button>
+            <button class="ghost" onclick="fillRandomScores()">模拟填分</button>
+            <button class="success" onclick="exportScoresCsv()">导出 scores.csv</button>
+            <button class="ghost" onclick="exportLastMatchCsv()">导出本局明细 CSV</button>
+          </div>
+
+          <div class="hint">
+            评分汇总使用 <code>scores.csv</code>：<code>player_id,games,total</code>。本局明细可另存为 match_history.csv，但分组只需要 scores.csv。
+          </div>
+        </div>
+
+        <div class="statsPanel">
+          <h2>CSV 导入 / 历史评分</h2>
+
+          <label>手动导入 players.csv</label>
+          <input class="fileInput" type="file" accept=".csv,text/csv" onchange="importPlayersFile(event)" />
+
+          <label>手动导入 scores.csv</label>
+          <input class="fileInput" type="file" accept=".csv,text/csv" onchange="importScoresFile(event)" />
+
+          <div class="buttons">
+            <button class="ghost" onclick="renderStats()">刷新评分表</button>
+            <button class="danger" onclick="resetScores()">清空评分</button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>选手ID</th>
+                <th>昵称</th>
+                <th>局数</th>
+                <th>平均分</th>
+                <th>总分</th>
+              </tr>
+            </thead>
+            <tbody id="statsTable"></tbody>
+          </table>
+
+          <div class="hint">
+            网页可以读取仓库 CSV，但不能安全地自动写回仓库。赛后请导出新的 <code>scores.csv</code>，手动上传覆盖仓库文件。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PLAYER_CSV_URL = "data/players.csv";
+    const SCORE_CSV_URL = "data/scores.csv";
+
+    let currentMode = "random";
+    let players = [];
+    let scores = {};
+    let selectedIds = new Set();
+
+    let lastBlue = [];
+    let lastRed = [];
+    let lastResult = "";
+    let lastMatchRows = [];
+
+    function setMode(mode) {
+      currentMode = mode;
+
+      document.body.classList.toggle("random-mode", mode === "random");
+      document.body.classList.toggle("strength-mode", mode === "strength");
+
+      document.getElementById("normalModeBtn").classList.toggle("active", mode === "random");
+      document.getElementById("strengthModeBtn").classList.toggle("active", mode === "strength");
+
+      showMessage(mode === "random" ? "已切换到普通随机。" : "已切换到实力随机。");
+      document.getElementById("summary").textContent = "";
+
+      renderPlayerTable();
+      renderStats();
+    }
+
+    function showMessage(msg) {
+      document.getElementById("message").textContent = msg;
+    }
+
+    function setSourceStatus(msg) {
+      document.getElementById("sourceStatus").textContent = msg;
+    }
+
+    async function reloadCsvData() {
+      await loadCsvData();
+    }
+
+    async function loadCsvData() {
+      let messages = [];
+
+      try {
+        const playerText = await fetchText(PLAYER_CSV_URL);
+        players = parsePlayersCsv(playerText);
+        selectedIds = new Set(players.filter(p => p.enabled).map(p => p.player_id));
+        messages.push(`已读取 ${players.length} 名选手`);
+      } catch (e) {
+        players = [];
+        selectedIds = new Set();
+        messages.push("未读取到 data/players.csv，可手动添加选手");
+      }
+
+      try {
+        const scoreText = await fetchText(SCORE_CSV_URL);
+        scores = parseScoresCsv(scoreText);
+        messages.push(`已读取 ${Object.keys(scores).length} 条评分`);
+      } catch (e) {
+        scores = {};
+        messages.push("未读取到 data/scores.csv，将使用默认分数");
+      }
+
+      setSourceStatus(messages.join("；") + "。");
+      renderPlayerTable();
+      renderStats();
+    }
+
+    async function fetchText(url) {
+      const response = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) throw new Error("fetch failed");
+      return await response.text();
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i + 1];
+
+        if (inQuotes) {
+          if (c === '"' && next === '"') {
+            field += '"';
+            i++;
+          } else if (c === '"') {
+            inQuotes = false;
+          } else {
+            field += c;
+          }
+        } else {
+          if (c === '"') {
+            inQuotes = true;
+          } else if (c === ",") {
+            row.push(field);
+            field = "";
+          } else if (c === "\n") {
+            row.push(field);
+            rows.push(row);
+            row = [];
+            field = "";
+          } else if (c === "\r") {
+            continue;
+          } else {
+            field += c;
+          }
+        }
+      }
+
+      row.push(field);
+      if (row.some(x => x.trim() !== "")) rows.push(row);
+
+      return rows;
+    }
+
+    function rowsToObjects(rows) {
+      if (!rows.length) return [];
+      const headers = rows[0].map(h => h.trim());
+      return rows.slice(1)
+        .filter(row => row.some(x => String(x).trim() !== ""))
+        .map(row => {
+          const obj = {};
+          headers.forEach((h, i) => obj[h] = (row[i] ?? "").trim());
+          return obj;
+        });
+    }
+
+    function parsePlayersCsv(text) {
+      const objects = rowsToObjects(parseCSV(text));
+      return objects
+        .map(obj => ({
+          player_id: (obj.player_id || obj.id || obj.name || "").trim(),
+          nickname: (obj.nickname || obj.nick || "").trim(),
+          enabled: parseBool(obj.enabled, true)
+        }))
+        .filter(p => p.player_id)
+        .filter((p, idx, arr) => arr.findIndex(x => x.player_id === p.player_id) === idx);
+    }
+
+    function parseScoresCsv(text) {
+      const objects = rowsToObjects(parseCSV(text));
+      const result = {};
+
+      objects.forEach(obj => {
+        const id = (obj.player_id || obj.id || obj.name || "").trim();
+        if (!id) return;
+
+        const games = Number(obj.games || 0);
+        const total = Number(obj.total || 0);
+
+        result[id] = {
+          games: Number.isFinite(games) ? games : 0,
+          total: Number.isFinite(total) ? total : 0
+        };
+      });
+
+      return result;
+    }
+
+    function parseBool(value, defaultValue) {
+      if (value === undefined || value === null || String(value).trim() === "") return defaultValue;
+      const s = String(value).trim().toLowerCase();
+      return ["1", "true", "yes", "y", "是", "启用"].includes(s);
+    }
+
+    function toCSV(headers, rows) {
+      const escape = value => {
+        const s = String(value ?? "");
+        if (/[",\n\r]/.test(s)) {
+          return '"' + s.replaceAll('"', '""') + '"';
+        }
+        return s;
+      };
+
+      return [
+        headers.join(","),
+        ...rows.map(row => headers.map(h => escape(row[h])).join(","))
+      ].join("\n");
+    }
+
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function getDefaultScore() {
+      const el = document.getElementById("defaultScore");
+      if (!el) return 50;
+      const v = Number(el.value);
+      return Number.isFinite(v) ? v : 50;
+    }
+
+    function getPlayerAverage(id) {
+      if (scores[id] && scores[id].games > 0) {
+        return scores[id].total / scores[id].games;
+      }
+      return getDefaultScore();
+    }
+
+    function getPlayerName(id) {
+      const p = players.find(x => x.player_id === id);
+      return p?.nickname ? `${p.nickname}（${id}）` : id;
+    }
+
+    function renderPlayerTable() {
+      const tbody = document.getElementById("playerTable");
+      tbody.innerHTML = "";
+
+      if (players.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="5" class="small">暂无选手。请添加选手，或在仓库中创建 data/players.csv。</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      players.forEach(p => {
+        const s = scores[p.player_id] || { games: 0, total: 0 };
+        const avg = s.games > 0 ? (s.total / s.games).toFixed(1) : getDefaultScore().toFixed(1);
+        const checked = selectedIds.has(p.player_id) ? "checked" : "";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input type="checkbox" ${checked} onchange="togglePlayer('${escapeAttr(p.player_id)}', this.checked)"></td>
+          <td>${escapeHtml(p.player_id)}</td>
+          <td>${escapeHtml(p.nickname || "")}</td>
+          <td>${s.games || 0}</td>
+          <td>${avg}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function togglePlayer(id, checked) {
+      if (checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+    }
+
+    function selectAllPlayers() {
+      players.forEach(p => selectedIds.add(p.player_id));
+      renderPlayerTable();
+    }
+
+    function clearSelectedPlayers() {
+      selectedIds.clear();
+      renderPlayerTable();
+    }
+
+    function addPlayersFromTextarea() {
+      const text = document.getElementById("newPlayersInput").value;
+      const lines = text.split(/\n+/).map(x => x.trim()).filter(Boolean);
+
+      let added = 0;
+      lines.forEach(line => {
+        let id = line;
+        let nickname = "";
+
+        if (line.includes(",")) {
+          const parsed = parseCSV(line)[0] || [];
+          id = (parsed[0] || "").trim();
+          nickname = (parsed[1] || "").trim();
+        }
+
+        if (!id) return;
+
+        const existed = players.find(p => p.player_id === id);
+        if (existed) {
+          if (nickname) existed.nickname = nickname;
+        } else {
+          players.push({ player_id: id, nickname, enabled: true });
+          added++;
+        }
+        selectedIds.add(id);
+      });
+
+      document.getElementById("newPlayersInput").value = "";
+      renderPlayerTable();
+      renderStats();
+      showMessage(`已加入 ${added} 名新选手。记得导出 players.csv 并上传到仓库保存。`);
+    }
+
+    function removeUncheckedPlayers() {
+      const before = players.length;
+      players = players.filter(p => selectedIds.has(p.player_id));
+      const removed = before - players.length;
+      renderPlayerTable();
+      renderStats();
+      showMessage(`已从当前 Source 删除 ${removed} 名未选中选手。`);
+    }
+
+    function getSelectedPlayerIds() {
+      return players
+        .map(p => p.player_id)
+        .filter(id => selectedIds.has(id));
+    }
+
+    function validateSelected(ids) {
+      if (ids.length < 2) return "至少需要选择 2 名玩家。";
+      if (ids.length % 2 !== 0) return "玩家人数必须是偶数，才能平均分成两组。";
+      return "";
+    }
+
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function teamTotal(team) {
+      return team.reduce((s, id) => s + getPlayerAverage(id), 0);
+    }
+
+    function candidateKey(blue, red) {
+      return blue.slice().sort().join("|") + " / " + red.slice().sort().join("|");
+    }
+
+    function generatePureRandomTeams(ids) {
+      const half = ids.length / 2;
+      const shuffled = shuffle(ids);
+      const blue = shuffled.slice(0, half);
+      const red = shuffled.slice(half);
+      const blueScore = teamTotal(blue);
+      const redScore = teamTotal(red);
+
+      return {
+        blue,
+        red,
+        blueScore,
+        redScore,
+        diff: Math.abs(blueScore - redScore),
+        candidateCount: 1,
+        chosenRank: 1,
+        topK: 1
+      };
+    }
+
+    function generateBalancedTeams(ids) {
+      const half = ids.length / 2;
+      const iterations = Math.max(100, Number(document.getElementById("iterations").value) || 3000);
+      const topK = Math.max(1, Number(document.getElementById("topK").value) || 20);
+      const candidates = [];
+      const seen = new Set();
+
+      for (let t = 0; t < iterations; t++) {
+        const shuffled = shuffle(ids);
+        const blue = shuffled.slice(0, half);
+        const red = shuffled.slice(half);
+
+        const key = candidateKey(blue, red);
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const blueScore = teamTotal(blue);
+        const redScore = teamTotal(red);
+        const diff = Math.abs(blueScore - redScore);
+
+        candidates.push({ blue, red, blueScore, redScore, diff });
+      }
+
+      if (candidates.length === 0) return generatePureRandomTeams(ids);
+
+      candidates.sort((a, b) => a.diff - b.diff);
+      const poolSize = Math.min(topK, candidates.length);
+      const chosenIndex = Math.floor(Math.random() * poolSize);
+      const chosen = candidates[chosenIndex];
+
+      return {
+        ...chosen,
+        candidateCount: candidates.length,
+        chosenRank: chosenIndex + 1,
+        topK: poolSize
+      };
+    }
+
+    function makeTeams() {
+      const ids = getSelectedPlayerIds();
+      const err = validateSelected(ids);
+
+      document.getElementById("summary").textContent = "";
+
+      if (err) {
+        showMessage(err);
+        return;
+      }
+
+      const result = currentMode === "strength"
+        ? generateBalancedTeams(ids)
+        : generatePureRandomTeams(ids);
+
+      renderTeams(result);
+
+      const half = ids.length / 2;
+
+      if (currentMode === "strength") {
+        document.getElementById("summary").innerHTML =
+          `本局共 ${ids.length} 人，已分为 ${half}v${half}。<br>` +
+          `模式：实力随机。两队历史平均总分差：${result.diff.toFixed(1)}。<br>` +
+          `本次从 ${result.candidateCount} 个随机候选中，在前 ${result.topK} 个均衡候选里抽取第 ${result.chosenRank} 个。`;
+      } else {
+        document.getElementById("summary").textContent = `本局共 ${ids.length} 人，已使用普通随机分为 ${half}v${half}。`;
+      }
+
+      showMessage("分组完成。");
+    }
+
+    function renderTeams(result) {
+      const blueList = document.getElementById("blueTeam");
+      const redList = document.getElementById("redTeam");
+      blueList.innerHTML = "";
+      redList.innerHTML = "";
+
+      const showScore = currentMode === "strength";
+
+      result.blue.forEach(id => {
+        const li = document.createElement("li");
+        if (showScore) {
+          const avg = getPlayerAverage(id).toFixed(1);
+          const games = scores[id]?.games || 0;
+          li.innerHTML = `${escapeHtml(getPlayerName(id))} <span class="score">平均分 ${avg}，${games} 局</span>`;
+        } else {
+          li.textContent = getPlayerName(id);
+        }
+        blueList.appendChild(li);
+      });
+
+      result.red.forEach(id => {
+        const li = document.createElement("li");
+        if (showScore) {
+          const avg = getPlayerAverage(id).toFixed(1);
+          const games = scores[id]?.games || 0;
+          li.innerHTML = `${escapeHtml(getPlayerName(id))} <span class="score">平均分 ${avg}，${games} 局</span>`;
+        } else {
+          li.textContent = getPlayerName(id);
+        }
+        redList.appendChild(li);
+      });
+
+      document.getElementById("blueCount").textContent = `${result.blue.length}人`;
+      document.getElementById("redCount").textContent = `${result.red.length}人`;
+
+      if (showScore) {
+        document.getElementById("blueScore").textContent = `蓝队历史平均总分：${result.blueScore.toFixed(1)}`;
+        document.getElementById("redScore").textContent = `红队历史平均总分：${result.redScore.toFixed(1)}`;
+      } else {
+        document.getElementById("blueScore").textContent = "";
+        document.getElementById("redScore").textContent = "";
+      }
+
+      lastBlue = result.blue;
+      lastRed = result.red;
+
+      if (showScore) {
+        lastResult =
+`LOL 自定义分组：实力随机
+
+蓝队：总分 ${result.blueScore.toFixed(1)}
+${result.blue.map((id, i) => `${i + 1}. ${getPlayerName(id)}（均分 ${getPlayerAverage(id).toFixed(1)}）`).join("\n")}
+
+红队：总分 ${result.redScore.toFixed(1)}
+${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}（均分 ${getPlayerAverage(id).toFixed(1)}）`).join("\n")}
+
+两队历史平均总分差：${result.diff.toFixed(1)}`;
+      } else {
+        lastResult =
+`LOL 自定义分组：普通随机
+
+蓝队：
+${result.blue.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}
+
+红队：
+${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
+      }
+
+      const box = document.getElementById("resultText");
+      box.textContent = lastResult;
+      box.style.display = "block";
+
+      if (showScore) {
+        renderScoreRows(result.blue, result.red);
+      }
+    }
+
+    function renderScoreRows(blue, red) {
+      const box = document.getElementById("scoreRows");
+      box.innerHTML = "";
+
+      const rows = [
+        ...blue.map(id => ({ id, team: "blue" })),
+        ...red.map(id => ({ id, team: "red" }))
+      ];
+
+      rows.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "scoreRow";
+        row.innerHTML = `
+          <span>${escapeHtml(item.team === "blue" ? "蓝队" : "红队")}：${escapeHtml(getPlayerName(item.id))}</span>
+          <input type="number" step="0.1" placeholder="本局分数" data-player="${escapeAttr(item.id)}" data-team="${item.team}">
+        `;
+        box.appendChild(row);
+      });
+    }
+
+    function saveMatchScores() {
+      if (currentMode !== "strength") {
+        showMessage("只有实力随机模式需要保存赛后分数。");
+        return;
+      }
+
+      const inputs = Array.from(document.querySelectorAll("#scoreRows input"));
+      if (inputs.length === 0) {
+        showMessage("请先生成分组，再录入本局分数。");
+        return;
+      }
+
+      const now = new Date();
+      const matchId = "match_" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+      let saved = 0;
+      lastMatchRows = [];
+
+      for (const input of inputs) {
+        const id = input.getAttribute("data-player");
+        const team = input.getAttribute("data-team");
+        const score = Number(input.value);
+
+        if (!Number.isFinite(score)) continue;
+
+        if (!scores[id]) {
+          scores[id] = { games: 0, total: 0 };
+        }
+
+        scores[id].games += 1;
+        scores[id].total += score;
+        saved++;
+
+        lastMatchRows.push({
+          match_id: matchId,
+          date: now.toISOString(),
+          player_id: id,
+          nickname: players.find(p => p.player_id === id)?.nickname || "",
+          team,
+          score
+        });
+      }
+
+      if (saved === 0) {
+        showMessage("没有检测到有效分数。");
+        return;
+      }
+
+      showMessage(`已在当前页面内保存 ${saved} 名玩家的本局分数。请导出 scores.csv 后上传到仓库保存。`);
+
+      renderPlayerTable();
+      renderStats();
+
+      if (lastBlue.length && lastRed.length) {
+        const result = {
+          blue: lastBlue,
+          red: lastRed,
+          blueScore: teamTotal(lastBlue),
+          redScore: teamTotal(lastRed),
+          diff: Math.abs(teamTotal(lastBlue) - teamTotal(lastRed)),
+          candidateCount: 1,
+          chosenRank: 1,
+          topK: 1
+        };
+        renderTeams(result);
+      }
+    }
+
+    function renderStats() {
+      const tbody = document.getElementById("statsTable");
+      tbody.innerHTML = "";
+
+      const ids = Array.from(new Set([
+        ...players.map(p => p.player_id),
+        ...Object.keys(scores)
+      ]));
+
+      if (ids.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="5" class="small">暂无历史评分。</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      ids
+        .map(id => {
+          const p = players.find(x => x.player_id === id) || { player_id: id, nickname: "" };
+          const s = scores[id] || { games: 0, total: 0 };
+          const avg = s.games ? s.total / s.games : getDefaultScore();
+          return { id, nickname: p.nickname, games: s.games || 0, total: s.total || 0, avg };
+        })
+        .sort((a, b) => b.avg - a.avg)
+        .forEach(r => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${escapeHtml(r.id)}</td>
+            <td>${escapeHtml(r.nickname || "")}</td>
+            <td>${r.games}</td>
+            <td>${r.avg.toFixed(1)}</td>
+            <td>${r.total.toFixed(1)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+    }
+
+    function fillRandomScores() {
+      const inputs = Array.from(document.querySelectorAll("#scoreRows input"));
+      inputs.forEach(input => {
+        input.value = (Math.random() * 40 + 60).toFixed(1);
+      });
+    }
+
+    async function copyResult() {
+      if (!lastResult) {
+        showMessage("请先生成分组。");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(lastResult);
+        showMessage("分组结果已复制。");
+      } catch (e) {
+        showMessage("复制失败，请手动复制下方结果。");
+      }
+    }
+
+    function exportPlayersCsv() {
+      const rows = players.map(p => ({
+        player_id: p.player_id,
+        nickname: p.nickname || "",
+        enabled: selectedIds.has(p.player_id) ? "1" : "0"
+      }));
+
+      const csv = toCSV(["player_id", "nickname", "enabled"], rows);
+      downloadText("players.csv", csv);
+      showMessage("已导出 players.csv。");
+    }
+
+    function exportScoresCsv() {
+      const ids = Array.from(new Set([
+        ...players.map(p => p.player_id),
+        ...Object.keys(scores)
+      ]));
+
+      const rows = ids.map(id => ({
+        player_id: id,
+        games: scores[id]?.games || 0,
+        total: Number(scores[id]?.total || 0).toFixed(1)
+      }));
+
+      const csv = toCSV(["player_id", "games", "total"], rows);
+      downloadText("scores.csv", csv);
+      showMessage("已导出 scores.csv。请上传覆盖仓库 data/scores.csv。");
+    }
+
+    function exportLastMatchCsv() {
+      if (!lastMatchRows.length) {
+        showMessage("暂无本局明细。请先保存本局分数。");
+        return;
+      }
+
+      const csv = toCSV(["match_id", "date", "player_id", "nickname", "team", "score"], lastMatchRows);
+      downloadText("match_history_latest.csv", csv);
+      showMessage("已导出本局明细 CSV。");
+    }
+
+    function importPlayersFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        players = parsePlayersCsv(String(reader.result || ""));
+        selectedIds = new Set(players.filter(p => p.enabled).map(p => p.player_id));
+        renderPlayerTable();
+        renderStats();
+        showMessage(`已导入 ${players.length} 名选手。`);
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    function importScoresFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        scores = parseScoresCsv(String(reader.result || ""));
+        renderPlayerTable();
+        renderStats();
+        showMessage(`已导入 ${Object.keys(scores).length} 条评分。`);
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    function resetScores() {
+      if (!confirm("确定清空当前页面内的历史评分吗？这不会自动修改仓库文件。")) return;
+      scores = {};
+      renderPlayerTable();
+      renderStats();
+      showMessage("当前页面内的历史评分已清空。");
+    }
+
+    function fillDemo() {
+      players = [
+        { player_id: "top01", nickname: "上单哥", enabled: true },
+        { player_id: "jug01", nickname: "打野哥", enabled: true },
+        { player_id: "mid01", nickname: "中单哥", enabled: true },
+        { player_id: "adc01", nickname: "AD哥", enabled: true },
+        { player_id: "sup01", nickname: "辅助哥", enabled: true },
+        { player_id: "fill01", nickname: "补位哥", enabled: true },
+        { player_id: "p07", nickname: "玩家7", enabled: true },
+        { player_id: "p08", nickname: "玩家8", enabled: true },
+        { player_id: "p09", nickname: "玩家9", enabled: true },
+        { player_id: "p10", nickname: "玩家10", enabled: true }
+      ];
+
+      scores = {
+        "top01": { games: 5, total: 420 },
+        "jug01": { games: 5, total: 390 },
+        "mid01": { games: 5, total: 455 },
+        "adc01": { games: 5, total: 410 },
+        "sup01": { games: 5, total: 365 },
+        "fill01": { games: 4, total: 260 },
+        "p07": { games: 4, total: 300 },
+        "p08": { games: 4, total: 350 },
+        "p09": { games: 4, total: 280 },
+        "p10": { games: 4, total: 330 }
+      };
+
+      selectedIds = new Set(players.map(p => p.player_id));
+
+      renderPlayerTable();
+      renderStats();
+      showMessage("已填入示例选手和示例历史评分。");
+    }
+
+    function clearTeamsOnly() {
+      document.getElementById("blueTeam").innerHTML = "";
+      document.getElementById("redTeam").innerHTML = "";
+      document.getElementById("scoreRows").innerHTML = "";
+      document.getElementById("blueCount").textContent = "";
+      document.getElementById("redCount").textContent = "";
+      document.getElementById("blueScore").textContent = "";
+      document.getElementById("redScore").textContent = "";
+      document.getElementById("summary").textContent = "";
+      document.getElementById("resultText").style.display = "none";
+
+      lastBlue = [];
+      lastRed = [];
+      lastResult = "";
+      lastMatchRows = [];
+
+      showMessage("已清空当前分组。");
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttr(s) {
+      return String(s)
+        .replaceAll("\\", "\\\\")
+        .replaceAll("'", "\\'")
+        .replaceAll("\n", "\\n")
+        .replaceAll("\r", "");
+    }
+
+    loadCsvData();
+  </script>
+</body>
+</html>
