@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LOL 自定义分组工具 CSV版</title>
+  <title>LOL 自定义分组器</title>
   <style>
     :root {
       --bg: #080d1c;
@@ -351,16 +351,12 @@
 </head>
 <body class="random-mode">
   <div class="container">
-    <div class="hero-title">比赛第一，友谊第二，甘</div>
-    <h1>LOL 自定义分组工具</h1>
-    <div class="subtitle">
-      支持 <strong>普通随机</strong> 和 <strong>实力随机</strong>。
-      选手名单和评分自动从仓库读取，赛后导出 CSV 上传覆盖即可保存。
-    </div>
+    <div class="hero-title">比赛第一，友谊第二，甘，崔，文...</div>
+    <h1>LOL 自定义分组器</h1>
 
     <div class="modeSwitch">
       <button id="normalModeBtn" class="modeBtn active" onclick="setMode('random')">普通随机</button>
-      <button id="strengthModeBtn" class="modeBtn" onclick="setMode('strength')">实力随机</button>
+      <button id="strengthModeBtn" class="modeBtn" onclick="setMode('strength')">评分随机</button>
     </div>
 
     <div class="grid">
@@ -389,11 +385,12 @@
             </table>
           </div>
 
-          <label>临时添加选手，每行一个昵称（ID 自动递增）</label>
-          <textarea id="newPlayersInput" placeholder="例如：
+          <label>临时添加选手，每行一个昵称，回车分隔（ID 自动递增）</label>
+          <textarea id="newPlayersInput" placeholder="例如（每行一个，不用逗号）：
 张三
 李四
-王五"></textarea>
+王五
+赵六"></textarea>
 
           <div class="buttons">
             <button class="ghost" onclick="addPlayersFromTextarea()">加入选手</button>
@@ -438,7 +435,7 @@
               当前是普通随机：只随机打乱已选选手并平均分队。
             </span>
             <span class="strengthOnlyText">
-              当前是实力随机：根据历史平均分生成多个候选分组，从实力差较小的候选里随机选一个。
+              当前是评分随机：根据历史平均分生成多个候选分组，从实力差较小的候选里随机选一个。
             </span>
           </div>
         </div>
@@ -464,7 +461,7 @@
         <div class="panel strengthOnly">
           <h2>赛后录入排名</h2>
           <div class="small">
-            先使用"实力随机"生成分组。游戏结束后，录入每个玩家本局排名（第1名=5分，第2名=4分，第3名=3分，第4名=2分，第5名=1分，之后0分），然后点击保存。
+            先使用"评分随机"生成分组。游戏结束后，录入每个玩家本局排名（第1名=5分，第2名=4分，第3名=3分，第4名=2分，第5名=1分，之后0分），然后点击保存。
           </div>
 
           <div id="scoreRows" class="scoreRows"></div>
@@ -536,7 +533,7 @@
       document.getElementById("normalModeBtn").classList.toggle("active", mode === "random");
       document.getElementById("strengthModeBtn").classList.toggle("active", mode === "strength");
 
-      showMessage(mode === "random" ? "已切换到普通随机。" : "已切换到实力随机。");
+      showMessage(mode === "random" ? "已切换到普通随机。" : "已切换到评分随机。");
       document.getElementById("summary").textContent = "";
 
       renderPlayerTable();
@@ -922,7 +919,7 @@
       if (currentMode === "strength") {
         document.getElementById("summary").innerHTML =
           `本局共 ${ids.length} 人，已分为 ${half}v${half}。<br>` +
-          `模式：实力随机。两队历史平均总分差：${result.diff.toFixed(1)}。<br>` +
+          `模式：评分随机。两队历史平均总分差：${result.diff.toFixed(1)}。<br>` +
           `本次从 ${result.candidateCount} 个随机候选中，在前 ${result.topK} 个均衡候选里抽取第 ${result.chosenRank} 个。`;
       } else {
         document.getElementById("summary").textContent = `本局共 ${ids.length} 人，已使用普通随机分为 ${half}v${half}。`;
@@ -979,7 +976,7 @@
 
       if (showScore) {
         lastResult =
-`LOL 自定义分组：实力随机
+`LOL 自定义分组：评分随机
 
 蓝队：总分 ${result.blueScore.toFixed(1)}
 ${result.blue.map((id, i) => `${i + 1}. ${getPlayerName(id)}（均分 ${getPlayerAverage(id).toFixed(1)}）`).join("\n")}
@@ -1030,7 +1027,7 @@ ${result.red.map((id, i) => `${i + 1}. ${getPlayerName(id)}`).join("\n")}`;
 
     function saveMatchScores() {
       if (currentMode !== "strength") {
-        showMessage("只有实力随机模式需要保存赛后排名。");
+        showMessage("只有评分随机模式需要保存赛后排名。");
         return;
       }
 
